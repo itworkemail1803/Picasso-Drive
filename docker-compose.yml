@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: picasso_postgres
+    environment:
+      POSTGRES_USER: picasso_admin
+      POSTGRES_PASSWORD: my_secure_password
+      POSTGRES_DB: picasso_drive_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
