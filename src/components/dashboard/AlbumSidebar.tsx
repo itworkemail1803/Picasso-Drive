@@ -25,6 +25,7 @@ import { useAlbumStore } from "@/store/useAlbumStore";
 import { useDragStore } from "@/store/useDragStore";
 import { ALBUM_ALL_ID, ALBUM_TRASH_ID, MediaItem } from "@/types/image.types";
 import { readDragPayload } from "@/utils/dragMedia";
+import { ShareButton } from "@/components/share/ShareButton";
 
 interface AlbumSidebarProps {
   allMedia: MediaItem[];
@@ -182,6 +183,7 @@ export function AlbumSidebar({
 
         {!isTrash && albumId !== ALBUM_ALL_ID && editingAlbumId !== albumId && (
           <div className="flex opacity-0 group-hover:opacity-100 transition">
+            <ShareButton albumId={albumId} albumName={label} />
             <button
               onClick={() => {
                 setEditingAlbumId(albumId);

@@ -20,7 +20,8 @@ model User {
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  albums    Album[]
+  albums      Album[]
+  sharedLinks SharedLink[]
   media     Media[]
 
   @@map("users")
@@ -35,7 +36,8 @@ model Album {
   createdAt   DateTime @default(now()) @map("created_at")
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media       Media[]
+  media        Media[]
+  sharedLinks  SharedLink[]
 
   @@map("albums")
 }
@@ -57,5 +59,19 @@ model Media {
   album        Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
 
   @@map("media")
+}
+
+model SharedLink {
+  id        String    @id @default(uuid())
+  albumId   String    @map("album_id")
+  userId    String    @map("user_id")
+  label     String?                         // Tên mô tả tuỳ chọn
+  expiresAt DateTime? @map("expires_at")   // null = không hết hạn
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  album     Album     @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shared_links")
 }
 

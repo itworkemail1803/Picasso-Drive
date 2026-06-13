@@ -40,9 +40,13 @@ export async function POST(req: Request) {
       .createSignedUploadUrl(filePath);
 
     if (error) {
-      console.error("Lỗi sinh Signed URL từ Supabase:", error);
+      console.error("❌ SUPABASE_DEBUG_ERROR:", JSON.stringify(error, null, 2));
+
       return NextResponse.json(
-        { error: "Không thể tạo đường link upload" },
+        {
+          error: "Không thể tạo đường link upload",
+          details: error.message, // Trả về chi tiết lỗi để client thấy
+        },
         { status: 500 },
       );
     }

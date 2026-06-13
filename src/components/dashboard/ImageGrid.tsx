@@ -37,7 +37,6 @@ export function ImageGrid({
 
   const isTrash = currentAlbumId === ALBUM_TRASH_ID;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  console.log("DEBUG_ALBUM_ID:", currentAlbumId, "TRASH_ID:", ALBUM_TRASH_ID);
 
   const dragPayloadIds = useMemo(() => {
     return selectedIds.length === 0 ? [] : selectedIds;

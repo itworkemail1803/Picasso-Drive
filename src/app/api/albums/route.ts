@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
     const { userId } = await auth();
     console.log("🔍 [API] GET /api/albums Clerk UserId:", userId);
+    const userClerk = await currentUser(); // Lấy thông tin user từ Clerk
 
     if (!userId) {
       return NextResponse.json(
@@ -14,6 +16,21 @@ export async function GET() {
       );
     }
 
+    // --- BƯỚC ĐỒNG BỘ USER MỚI ---
+    // Kiểm tra xem User này đã có trong bảng 'User' chưa, nếu chưa thì tạo mới
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      console.log(`👤 [API] User ${userId} chưa có trong DB. Đang tạo mới...`);
+      await prisma.user.create({
+        data: {
+          id: userId,
+          email:
+            userClerk?.emailAddresses[0]?.emailAddress || "no-email@clerk.com",
+        },
+      });
+    }
+    // ----------------------------
+
     let albums = await prisma.album.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
@@ -21,7 +38,7 @@ export async function GET() {
 
     if (albums.length === 0) {
       console.log(`🌱 [API] Seeding default albums for user: ${userId}`);
-      
+
       const defaultAlbumsToCreate = [
         { name: "Portraits", slug: `portraits-${userId.slice(-6)}` },
         { name: "Landscape", slug: `landscape-${userId.slice(-6)}` },
@@ -34,7 +51,7 @@ export async function GET() {
         data: defaultAlbumsToCreate.map((alb) => ({
           name: alb.name,
           slug: alb.slug,
-          userId: userId,
+          userId: userId, // Lúc này userId chắc chắn đã tồn tại trong bảng User
         })),
       });
 
@@ -48,7 +65,10 @@ export async function GET() {
   } catch (error: any) {
     console.error("❌ [API] GET /api/albums Error:", error);
     return NextResponse.json(
-      { error: "Đã có lỗi xảy ra khi lấy danh sách album", details: error.message },
+      {
+        error: "Đã có lỗi xảy ra khi lấy danh sách album",
+        details: error.message,
+      },
       { status: 500 },
     );
   }
