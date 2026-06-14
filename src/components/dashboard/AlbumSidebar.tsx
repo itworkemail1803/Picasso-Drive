@@ -26,6 +26,7 @@ import { useDragStore } from "@/store/useDragStore";
 import { ALBUM_ALL_ID, ALBUM_TRASH_ID, MediaItem } from "@/types/image.types";
 import { readDragPayload } from "@/utils/dragMedia";
 import { ShareButton } from "@/components/share/ShareButton";
+import { StorageDisplay } from "@/components/dashboard/StorageDisplay";
 
 interface AlbumSidebarProps {
   allMedia: MediaItem[];
@@ -262,6 +263,9 @@ export function AlbumSidebar({
         <Images size={12} className="shrink-0" />
         Drag assets onto any row to re-allocate location.
       </p>
+      <div className="mt-4">
+        <StorageDisplay />
+      </div>
     </div>
   );
 

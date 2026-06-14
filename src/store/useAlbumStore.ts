@@ -8,16 +8,27 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
   mediaOverrides: {},
   activeAlbumId: ALBUM_ALL_ID,
   deletedMediaIds: [],
+  storageUsed: 0,
 
   setActiveAlbum: (albumId) => set({ activeAlbumId: albumId }),
+
+  fetchStorageUsage: async () => {
+    try {
+      const res = await fetch("/api/storage/usage");
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ storageUsed: data.used });
+    } catch (error) {
+      console.error("Lỗi fetch storage:", error);
+    }
+  },
 
   fetchAlbums: async () => {
     try {
       const response = await fetch("/api/albums");
-      if (!response.ok) {
-        throw new Error("Failed to fetch albums from server");
-      }
+      if (!response.ok) throw new Error("Failed to fetch albums");
       const dbAlbums = await response.json();
+
       const mappedAlbums = dbAlbums.map((a: any) => ({
         id: a.id,
         name: a.name,
@@ -26,9 +37,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
         isLocked: false,
       }));
 
-      set({
-        albums: [...mappedAlbums, TRASH_ALBUM],
-      });
+      set({ albums: [...mappedAlbums, TRASH_ALBUM] });
     } catch (error) {
       console.error("❌ [Store] Fetch Albums Error:", error);
     }
@@ -45,41 +54,32 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
         body: JSON.stringify({ name: normalized }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create");
-      }
-
+      if (!response.ok) throw new Error("Failed to create");
       const dbAlbum = await response.json();
-      const newAlbum = {
-        id: dbAlbum.id,
-        name: dbAlbum.name,
-        createdAt: dbAlbum.createdAt,
-        kind: "user" as const,
-        isLocked: false,
-      };
 
       set((state) => ({
         albums: [
-          newAlbum,
+          {
+            id: dbAlbum.id,
+            name: dbAlbum.name,
+            createdAt: dbAlbum.createdAt,
+            kind: "user",
+            isLocked: false,
+          },
           ...state.albums.filter((a) => a.id !== ALBUM_TRASH_ID),
           TRASH_ALBUM,
         ],
       }));
-
-      return newAlbum.id;
+      return dbAlbum.id;
     } catch (error) {
-      console.error("❌ [Store] Create Album Error:", error);
       return null;
     }
   },
 
+  // OPTIMISTIC UPDATE: Move Media
   moveMediaToAlbum: async (mediaIds, albumId) => {
-    if (!mediaIds.length) return;
-
     const previousOverrides = { ...get().mediaOverrides };
 
-    // 1. Optimistic Update UI
     set((state) => {
       const nextOverrides = { ...state.mediaOverrides };
       mediaIds.forEach((id) => {
@@ -92,27 +92,25 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
       return { mediaOverrides: nextOverrides };
     });
 
-    // 2. Sync với Database
     try {
       const response = await fetch("/api/media/update-album", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mediaIds,
-          albumId: albumId,
+          albumId,
           isDeleted: albumId === ALBUM_TRASH_ID,
         }),
       });
-
-      if (!response.ok) throw new Error("API sync failed");
-    } catch (error) {
-      console.error("❌ [Store] Sync failed, rolling back UI", error);
+      if (!response.ok) throw new Error();
+    } catch {
       set({ mediaOverrides: previousOverrides });
     }
   },
-  //Khôi phục ảnh đã xóa
+
   restoreMedia: async (mediaIds: string[]) => {
     const previousOverrides = { ...get().mediaOverrides };
+
     set((state) => {
       const nextOverrides = { ...state.mediaOverrides };
       mediaIds.forEach((id) => {
@@ -126,98 +124,112 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
     });
 
     try {
-      await fetch("/api/media/restore", {
+      const res = await fetch("/api/media/restore", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaIds }),
       });
-    } catch (error) {
+      if (!res.ok) throw new Error();
+    } catch {
       set({ mediaOverrides: previousOverrides });
     }
   },
 
-  //Xóa vĩnh viễn ảnh
   permanentlyDeleteMedia: async (mediaIds: string[]) => {
     set((state) => ({
       deletedMediaIds: [...state.deletedMediaIds, ...mediaIds],
     }));
     try {
-      const response = await fetch("/api/media/delete-permanent", {
+      await fetch("/api/media/delete-permanent", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaIds }),
       });
-      if (!response.ok) throw new Error("Failed to delete permanently");
 
-      // Xóa override của các item đã xóa vĩnh viễn
       set((state) => {
         const nextOverrides = { ...state.mediaOverrides };
         mediaIds.forEach((id) => delete nextOverrides[id]);
         return { mediaOverrides: nextOverrides };
       });
+      get().fetchStorageUsage();
     } catch (error) {
-      console.error("❌ [Store] Permanent Delete Error:", error);
+      // Rollback deletedMediaIds nếu cần
+      console.error("Delete failed");
     }
   },
 
+  // OPTIMISTIC UPDATE: Rename Album
   renameAlbum: async (albumId: string, name: string) => {
-    // Thêm async
-    const normalized = name.trim();
-    if (normalized.length === 0) return false;
-
-    // Nếu bạn có gọi API ở đây, hãy dùng await
-    // await fetch(...);
-
+    const oldAlbums = [...get().albums];
     set((state) => ({
-      albums: state.albums.map((album) =>
-        album.id === albumId ? { ...album, name: normalized } : album,
-      ),
+      albums: state.albums.map((a) => (a.id === albumId ? { ...a, name } : a)),
     }));
-    return true; // Tự động được wrap thành Promise<boolean>
-  },
 
-  deleteAlbum: async (albumId: string): Promise<boolean> => {
     try {
-      const response = await fetch("/api/albums", {
-        method: "DELETE",
+      const res = await fetch("/api/albums/rename", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ albumId }),
+        body: JSON.stringify({ albumId, name }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete album");
-      }
-
-      set((state) => ({
-        albums: state.albums.filter((a) => a.id !== albumId),
-        activeAlbumId:
-          state.activeAlbumId === albumId ? ALBUM_ALL_ID : state.activeAlbumId,
-      }));
+      if (!res.ok) throw new Error();
       return true;
-    } catch (error) {
-      console.error("❌ [Store] Delete Album Error:", error);
+    } catch {
+      set({ albums: oldAlbums });
       return false;
     }
   },
 
-  // THÊM HÀM NÀY VÀO (Đang thiếu)
+  // OPTIMISTIC UPDATE: Delete Album
+  deleteAlbum: async (albumId: string) => {
+    const oldAlbums = [...get().albums];
+    set((state) => ({
+      albums: state.albums.filter((a) => a.id !== albumId),
+      activeAlbumId:
+        state.activeAlbumId === albumId ? ALBUM_ALL_ID : state.activeAlbumId,
+    }));
+
+    try {
+      const res = await fetch("/api/albums", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ albumId }),
+      });
+      if (!res.ok) throw new Error();
+      return true;
+    } catch {
+      set({ albums: oldAlbums });
+      return false;
+    }
+  },
+
   setMediaOverride: (mediaId, patch) =>
     set((state) => ({
       mediaOverrides: {
         ...state.mediaOverrides,
-        [mediaId]: { ...state.mediaOverrides[mediaId], ...patch },
+        [mediaId]: { ...(state.mediaOverrides[mediaId] || {}), ...patch },
       },
     })),
 
   getMediaCountByAlbum: (albumId, mediaItems) => {
     if (!mediaItems) return 0;
-    const items = mediaItems.filter((i) => !i.isDeleted);
+    // Lọc theo override nếu có
+    const items = mediaItems.filter((i) => {
+      const override = get().mediaOverrides[i.id];
+      if (override?.isDeleted !== undefined) return !override.isDeleted;
+      return !i.isDeleted;
+    });
 
     if (albumId === ALBUM_ALL_ID) return items.length;
     if (albumId === ALBUM_TRASH_ID)
-      return mediaItems.filter((i) => i.isDeleted).length;
+      return mediaItems.filter((i) => {
+        const override = get().mediaOverrides[i.id];
+        return override?.isDeleted ?? i.isDeleted;
+      }).length;
 
-    return items.filter((i) => i.albumId === albumId).length;
+    return items.filter((i) => {
+      const override = get().mediaOverrides[i.id];
+      const currentAlbum = override?.albumId ?? i.albumId;
+      return currentAlbum === albumId;
+    }).length;
   },
 }));

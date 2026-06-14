@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { ReactNode } from "react";
 import { Providers } from "@/app/providers";
 import "@/app/globals.css";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Picasso Drive",
-  description: "Advanced media management dashboard"
+  description: "Advanced media management dashboard",
 };
 
 type RootLayoutProps = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
     <html lang="en">
       <body>
         <Providers>{children}</Providers>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

@@ -51,7 +51,7 @@ export default async function SharePage({
               id: true,
               name: true,
               url: true,
-              storageSize: true,
+              size: true,
             },
             orderBy: { createdAt: "asc" },
           },
@@ -109,7 +109,7 @@ export default async function SharePage({
     id: m.id,
     name: m.name,
     url: m.url,
-    fileSize: m.storageSize,
+    fileSize: m.size,
   }));
 
   return (

@@ -11,11 +11,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { imageUrl, fileName, originalSize, storageSize, albumId, filePath } =
-      body;
+    const { imageUrl, fileName, originalSize, size, albumId, filePath } = body;
 
     // Validate dữ liệu đầu vào theo cấu trúc mới
-    if (!imageUrl || !fileName || !storageSize || !filePath) {
+    if (!imageUrl || !fileName || !size || !filePath) {
       return NextResponse.json(
         { error: "Thiếu thông tin bắt buộc để ghi nhận vào Database" },
         { status: 400 },
@@ -54,8 +53,8 @@ export async function POST(request: NextRequest) {
         url: imageUrl,
         filePath: filePath,
         name: fileName,
-        originalSize: Number(originalSize || storageSize),
-        storageSize: Number(storageSize),
+        originalSize: Number(originalSize || size || 0),
+        size: BigInt(size ?? 0),
         albumId:
           albumId && albumId !== "all" && albumId !== "uploads"
             ? albumId
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
           name: newMedia.name,
           albumId: newMedia.albumId || "all",
           createdAt: newMedia.createdAt.toISOString(),
-          fileSize: newMedia.storageSize,
+          fileSize: Number(newMedia.size),
           originalSize: newMedia.originalSize,
           mimeType: "image/png",
           previewUrl: newMedia.url,

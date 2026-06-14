@@ -2,6 +2,7 @@ import { SignIn, UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import { dark } from "@clerk/themes";
+import { AuthToastHandler } from "@/components/auth-toast/AuthToastHandler";
 
 export default async function HomePage(): Promise<JSX.Element> {
   // Lấy userId trực tiếp ở tầng Server để check trạng thái Auth cực nhanh
@@ -11,7 +12,7 @@ export default async function HomePage(): Promise<JSX.Element> {
   if (userId) {
     return (
       <main className="min-h-screen px-3 py-6 sm:px-4 sm:py-10 bg-slate-950 text-slate-100">
-        {/* Header */}
+        <AuthToastHandler />
         <div className="mx-auto mb-5 max-w-[90rem] flex items-center justify-between border-b border-slate-900 pb-4">
           <div>
             <h1 className="text-xl font-bold text-slate-100 sm:text-2xl">

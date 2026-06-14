@@ -10,7 +10,7 @@ interface PrismaMediaItem {
   url: string;
   filePath: string;
   originalSize: number;
-  storageSize: number;
+  size: number;
   createdAt: Date;
   isDeleted: boolean;
 }
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
     let orderByCondition: any = { createdAt: "desc" };
     if (sortBy === "date-asc") orderByCondition = { createdAt: "asc" };
     if (sortBy === "date-desc") orderByCondition = { createdAt: "desc" };
-    if (sortBy === "size-asc") orderByCondition = { storageSize: "asc" };
-    if (sortBy === "size-desc") orderByCondition = { storageSize: "desc" };
+    if (sortBy === "size-asc") orderByCondition = { size: "asc" };
+    if (sortBy === "size-desc") orderByCondition = { size: "desc" };
     if (sortBy === "name-asc") orderByCondition = { name: "asc" };
 
     const mediaItems = await prisma.media.findMany({
@@ -63,8 +63,11 @@ export async function GET(request: NextRequest) {
       name: item.name,
       albumId: item.albumId || "all",
       createdAt: item.createdAt.toISOString(),
-      fileSize: item.storageSize,
-      originalSize: item.originalSize,
+
+      // Ép kiểu chắc chắn cho cả size và originalSize
+      fileSize: Number(item.size || 0),
+      originalSize: Number(item.originalSize || 0),
+
       mimeType: "image/png",
       previewUrl: item.url,
       isDeleted: item.isDeleted,

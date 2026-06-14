@@ -21,7 +21,7 @@ export interface ShareMediaItem {
   id: string;
   name: string;
   url: string;
-  fileSize: number;
+  fileSize: number | bigint;
 }
 
 /** Data returned by GET /api/share/[shareId] */

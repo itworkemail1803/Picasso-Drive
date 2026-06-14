@@ -50,9 +50,9 @@ model Media {
   isDeleted    Boolean  @default(false) @map("is_deleted")
   name         String
   url          String   // Đường link publicUrl từ Supabase để hiển thị ảnh
+  size         BigInt   @default(0) @map("storage_size")
   filePath     String   @map("file_path") // Đường dẫn gốc (ví dụ: uploads/abc.webp) để sau này xóa file trên Supabase
-  originalSize Int      @map("original_size")
-  storageSize  Int      @map("storage_size") // Dung lượng sau khi nén thực tế lưu trên Cloud
+  originalSize Int      @default(0) @map("original_size")
   createdAt    DateTime @default(now()) @map("created_at")
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)

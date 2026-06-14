@@ -95,8 +95,16 @@ const S = {
       ...(variant === "primary"
         ? { background: "#2563eb", color: "#fff" }
         : variant === "danger"
-          ? { background: "rgba(220,38,38,0.15)", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.3)" }
-          : { background: "rgba(30,41,59,0.8)", color: "#94a3b8", border: "1px solid rgba(51,65,85,0.6)" }),
+          ? {
+              background: "rgba(220,38,38,0.15)",
+              color: "#fca5a5",
+              border: "1px solid rgba(220,38,38,0.3)",
+            }
+          : {
+              background: "rgba(30,41,59,0.8)",
+              color: "#94a3b8",
+              border: "1px solid rgba(51,65,85,0.6)",
+            }),
     }) as React.CSSProperties,
 
   grid: {
@@ -180,12 +188,15 @@ const S = {
 };
 
 // ─── Helper ────────────────────────────────────────────────────
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+function formatBytes(bytes: number | bigint): string {
+  // Chuyển BigInt sang Number ngay tại đây
+  const numBytes = Number(bytes);
+
+  if (numBytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(numBytes) / Math.log(k));
+  return `${parseFloat((numBytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 function formatDate(iso: string): string {
@@ -214,13 +225,20 @@ function ShareImageCard({
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
     >
-      <div style={{ position: "relative", background: "#0f172a", minHeight: "120px" }}>
+      <div
+        style={{
+          position: "relative",
+          background: "#0f172a",
+          minHeight: "120px",
+        }}
+      >
         {!loaded && (
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(90deg, #1e293b 25%, #0f172a 50%, #1e293b 75%)",
+              background:
+                "linear-gradient(90deg, #1e293b 25%, #0f172a 50%, #1e293b 75%)",
               backgroundSize: "200% 100%",
               animation: "shimmer 1.5s infinite",
               minHeight: "120px",
@@ -248,7 +266,14 @@ function ShareImageCard({
         >
           {item.name}
         </span>
-        <span style={{ fontSize: "0.68rem", color: "#475569", fontFamily: "monospace", flexShrink: 0 }}>
+        <span
+          style={{
+            fontSize: "0.68rem",
+            color: "#475569",
+            fontFamily: "monospace",
+            flexShrink: 0,
+          }}
+        >
           {formatBytes(item.fileSize)}
         </span>
       </div>
@@ -272,11 +297,15 @@ export function ShareGallery({
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   const prevImage = useCallback(() => {
-    setLightboxIndex((i) => (i === null ? null : i === 0 ? media.length - 1 : i - 1));
+    setLightboxIndex((i) =>
+      i === null ? null : i === 0 ? media.length - 1 : i - 1,
+    );
   }, [media.length]);
 
   const nextImage = useCallback(() => {
-    setLightboxIndex((i) => (i === null ? null : i === media.length - 1 ? 0 : i + 1));
+    setLightboxIndex((i) =>
+      i === null ? null : i === media.length - 1 ? 0 : i + 1,
+    );
   }, [media.length]);
 
   // Keyboard navigation for lightbox
@@ -318,7 +347,10 @@ export function ShareGallery({
               // Giữ nguyên tên file, xử lý trùng tên bằng index
               const ext = item.name.split(".").pop() || "jpg";
               const safeName = item.name.replace(/[/\\?%*:|"<>]/g, "-");
-              folder.file(safeName.endsWith(`.${ext}`) ? safeName : `${safeName}.${ext}`, blob);
+              folder.file(
+                safeName.endsWith(`.${ext}`) ? safeName : `${safeName}.${ext}`,
+                blob,
+              );
             } catch {
               // Bỏ qua ảnh lỗi, không dừng toàn bộ process
             } finally {
@@ -331,7 +363,11 @@ export function ShareGallery({
 
       // Tạo blob và trigger download
       const blob = await zip.generateAsync(
-        { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+        {
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
+        },
         (meta) => {
           // meta.percent là progress của quá trình zip compression
           setDownloadProgress(Math.round(meta.percent));
@@ -355,7 +391,8 @@ export function ShareGallery({
     }
   }, [isDownloading, media, albumName]);
 
-  const activeLightboxItem = lightboxIndex !== null ? media[lightboxIndex] : null;
+  const activeLightboxItem =
+    lightboxIndex !== null ? media[lightboxIndex] : null;
 
   return (
     <>
@@ -424,7 +461,9 @@ export function ShareGallery({
                   {isDownloading ? (
                     <>
                       <span style={{ fontSize: "0.75rem" }}>⏳</span>
-                      {downloadProgress > 0 ? `${downloadProgress}%` : "Đang chuẩn bị…"}
+                      {downloadProgress > 0
+                        ? `${downloadProgress}%`
+                        : "Đang chuẩn bị…"}
                     </>
                   ) : (
                     <>
@@ -462,7 +501,9 @@ export function ShareGallery({
         </header>
 
         {/* ── Gallery Grid ───────────────────────────────────── */}
-        <main style={{ maxWidth: "90rem", margin: "0 auto", padding: "1.5rem" }}>
+        <main
+          style={{ maxWidth: "90rem", margin: "0 auto", padding: "1.5rem" }}
+        >
           {media.length === 0 ? (
             <div
               style={{
@@ -504,7 +545,9 @@ export function ShareGallery({
           }}
         >
           Powered by{" "}
-          <span style={{ color: "#475569", fontWeight: 600 }}>Picasso Drive</span>
+          <span style={{ color: "#475569", fontWeight: 600 }}>
+            Picasso Drive
+          </span>
         </footer>
       </div>
 
@@ -557,30 +600,48 @@ export function ShareGallery({
                 color: "#64748b",
               }}
             >
-              {activeLightboxItem.name} · {formatBytes(activeLightboxItem.fileSize)}
+              {activeLightboxItem.name} ·{" "}
+              {formatBytes(activeLightboxItem.fileSize)}
             </p>
           </div>
 
           {/* Navigation */}
           <div style={S.lightboxNav} onClick={(e) => e.stopPropagation()}>
             <button
-              style={{ ...S.btn("ghost"), padding: "0.4rem 0.75rem", fontSize: "1rem" }}
+              style={{
+                ...S.btn("ghost"),
+                padding: "0.4rem 0.75rem",
+                fontSize: "1rem",
+              }}
               onClick={prevImage}
               aria-label="Previous image"
             >
               ‹
             </button>
-            <span style={{ fontSize: "0.78rem", color: "#64748b", minWidth: "60px", textAlign: "center" }}>
+            <span
+              style={{
+                fontSize: "0.78rem",
+                color: "#64748b",
+                minWidth: "60px",
+                textAlign: "center",
+              }}
+            >
               {lightboxIndex! + 1} / {media.length}
             </span>
             <button
-              style={{ ...S.btn("ghost"), padding: "0.4rem 0.75rem", fontSize: "1rem" }}
+              style={{
+                ...S.btn("ghost"),
+                padding: "0.4rem 0.75rem",
+                fontSize: "1rem",
+              }}
               onClick={nextImage}
               aria-label="Next image"
             >
               ›
             </button>
-            <div style={{ width: "1px", background: "#1e293b", height: "1rem" }} />
+            <div
+              style={{ width: "1px", background: "#1e293b", height: "1rem" }}
+            />
             <a
               href={activeLightboxItem.url}
               download={activeLightboxItem.name}

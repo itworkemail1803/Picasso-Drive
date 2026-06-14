@@ -27,6 +27,7 @@ export interface AlbumStoreActions {
   mediaOverrides: Record<string, MediaOverride>;
   activeAlbumId: string;
   deletedMediaIds: string[]; // Thêm mảng này
+  storageUsed: number;
   setActiveAlbum: (albumId: string) => void;
   fetchAlbums: () => Promise<void>;
   createAlbum: (name: string) => Promise<string | null>;
@@ -37,6 +38,7 @@ export interface AlbumStoreActions {
   deleteAlbum: (albumId: string) => Promise<boolean>; // Phải là Promise<boolean>
   setMediaOverride: (mediaId: string, patch: Partial<MediaOverride>) => void;
   getMediaCountByAlbum: (albumId: string, mediaItems: any[]) => number;
+  fetchStorageUsage: () => Promise<void>;
 }
 
 export type AlbumStore = AlbumStoreState & AlbumStoreActions;

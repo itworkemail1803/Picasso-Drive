@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "media" ADD COLUMN     "size" BIGINT NOT NULL DEFAULT 0;

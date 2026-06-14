@@ -13,7 +13,10 @@ export async function GET(
     const { shareId } = await params;
 
     if (!shareId) {
-      return NextResponse.json({ error: "Share ID không hợp lệ" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Share ID không hợp lệ" },
+        { status: 400 },
+      );
     }
 
     const link = await prisma.sharedLink.findUnique({
@@ -29,7 +32,7 @@ export async function GET(
                 id: true,
                 name: true,
                 url: true,
-                storageSize: true,
+                size: true,
               },
               orderBy: { createdAt: "asc" },
             },
@@ -43,7 +46,10 @@ export async function GET(
 
     // Không tìm thấy
     if (!link) {
-      return NextResponse.json({ error: "Share link không tồn tại" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Share link không tồn tại" },
+        { status: 404 },
+      );
     }
 
     // Kiểm tra hết hạn
@@ -64,7 +70,7 @@ export async function GET(
         id: m.id,
         name: m.name,
         url: m.url,
-        fileSize: m.storageSize,
+        fileSize: m.size,
       })),
     };
 
