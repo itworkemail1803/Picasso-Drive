@@ -13,22 +13,32 @@ const isPublicRoute = createRouteMatcher([
 
 // 🌟 Thay "export default clerkMiddleware" thành named export "proxy" phù hợp tiêu chuẩn mới
 export const proxy = clerkMiddleware(async (auth, request) => {
-  // 1. Lấy thông tin xác thực từ Clerk
-  const { userId } = await auth();
+  try {
+    // 1. Lấy thông tin xác thực từ Clerk
+    const { userId } = await auth();
 
-  // 2. Nếu là route bảo mật mà chưa có userId -> Chặn đứng ngay
-  if (!isPublicRoute(request) && !userId) {
-    // Nếu là request gọi API, trả về lỗi 401 Unauthorized
-    if (request.nextUrl.pathname.startsWith("/api")) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // 2. Nếu là route bảo mật mà chưa có userId -> Chặn đứng ngay
+    if (!isPublicRoute(request) && !userId) {
+      // Nếu là request gọi API, trả về lỗi 401 Unauthorized
+      if (request.nextUrl.pathname.startsWith("/api")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Nếu là các trang giao diện phát sinh khác, đá về trang chủ để yêu cầu login
+      const signInUrl = new URL("/", request.url);
+      return NextResponse.redirect(signInUrl);
     }
 
-    // Nếu là các trang giao diện phát sinh khác, đá về trang chủ để yêu cầu login
+    return NextResponse.next();
+  } catch (error) {
+    console.error("❌ Clerk Middleware Error:", error);
+    // Trả về 401/403 thay vì 500 khi Clerk gặp lỗi (ví dụ: dùng dev keys ở prod)
+    if (request.nextUrl.pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "Authentication Error" }, { status: 401 });
+    }
     const signInUrl = new URL("/", request.url);
     return NextResponse.redirect(signInUrl);
   }
-
-  return NextResponse.next();
 });
 
 export const config = {

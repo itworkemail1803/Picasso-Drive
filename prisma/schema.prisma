@@ -1,65 +1,58 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
-}
-
 model User {
-  id        String   @id // Sẽ dùng ID do Clerk cấp (dạng user_2... để đồng bộ trực tiếp)
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id
+  email       String       @unique
+  name        String?
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   albums      Album[]
+  media       Media[]
   sharedLinks SharedLink[]
-  media     Media[]
 
   @@map("users")
 }
 
 model Album {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
   name        String
-  slug        String   @unique
-  isPublished Boolean  @default(false) @map("is_published")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media        Media[]
-  sharedLinks  SharedLink[]
+  slug        String       @unique
+  isPublished Boolean      @default(false) @map("is_published")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media       Media[]
+  sharedLinks SharedLink[]
 
   @@map("albums")
 }
 
-// Bảng Media (ảnh) tạm thời để đây để tạo mối quan hệ, chúng ta sẽ scale chi tiết ở bước sau
 model Media {
   id           String   @id @default(uuid())
   userId       String   @map("user_id")
   albumId      String?  @map("album_id")
-  isDeleted    Boolean  @default(false) @map("is_deleted")
   name         String
-  url          String   // Đường link publicUrl từ Supabase để hiển thị ảnh
-  size         BigInt   @default(0) @map("storage_size")
-  filePath     String   @map("file_path") // Đường dẫn gốc (ví dụ: uploads/abc.webp) để sau này xóa file trên Supabase
+  url          String
+  filePath     String   @map("file_path")
   originalSize Int      @default(0) @map("original_size")
+  size         BigInt   @default(0) @map("storage_size")
   createdAt    DateTime @default(now()) @map("created_at")
-
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+  album        Album?   @relation(fields: [albumId], references: [id])
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  album        Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
-  @@index([userId, albumId]) // Tăng tốc độ khi mở xem ảnh trong album
+
+  @@index([userId, albumId])
   @@index([userId, createdAt])
+  @@index([userId])
   @@map("media")
 }
 
@@ -67,13 +60,11 @@ model SharedLink {
   id        String    @id @default(uuid())
   albumId   String    @map("album_id")
   userId    String    @map("user_id")
-  label     String?                         // Tên mô tả tuỳ chọn
-  expiresAt DateTime? @map("expires_at")   // null = không hết hạn
+  label     String?
+  expiresAt DateTime? @map("expires_at")
   createdAt DateTime  @default(now()) @map("created_at")
-
   album     Album     @relation(fields: [albumId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("shared_links")
 }
-
