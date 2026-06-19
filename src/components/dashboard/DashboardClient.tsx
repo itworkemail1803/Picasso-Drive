@@ -86,6 +86,7 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
   const brokenMediaIdsRef = useRef<Set<string>>(new Set());
   const [renderTrigger, setRenderTrigger] = useState(0);
   const deletedMediaIds = useAlbumStore((state) => state.deletedMediaIds);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchAlbums();
@@ -110,16 +111,20 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
     () => ({
       ...filters,
       albumId: ALBUM_ALL_ID,
+      page: page,
     }),
-    [filters.search, filters.sortBy],
+    [filters.search, filters.sortBy, page],
   );
 
   const {
     mediaItems: cachedMedia,
+    total,
     isLoading,
     isError,
     errorMessage,
-  } = useMedia({ ...queryFilters, userId });
+    isFetching,
+  } = useMedia({ ...queryFilters, userId, page: page, limit: 50 });
+  const hasMore = total > page * 50;
 
   const queuedItems = useMemo(() => mapQueueToMediaItems(queue), [queue]);
 
@@ -245,6 +250,17 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
           onMediaLoadError={handleMediaLoadError}
           currentAlbumId={filters.albumId}
         />
+        {hasMore && (
+          <div className="flex justify-center p-6">
+            <button
+              onClick={() => setPage((prev) => prev + 1)}
+              disabled={isLoading}
+              className="rounded-full border border-slate-700 bg-slate-900 px-6 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            >
+              {isLoading ? "Loading..." : "Load More"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

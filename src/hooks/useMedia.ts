@@ -16,16 +16,22 @@ export interface UseMediaResult {
   refetch: () => Promise<unknown>;
 }
 
-// Hàm fetch dữ liệu thật từ API Route của Next.js thay thế cho mock API cũ
+// 🎯 Cập nhật params type để chấp nhận phân trang
+interface ExtendedMediaParams extends MediaQueryParams {
+  page?: number;
+  limit?: number;
+}
+
 async function fetchRealMedia(
-  params: Required<MediaQueryParams>,
+  params: Required<ExtendedMediaParams>,
 ): Promise<{ items: MediaItem[]; total: number }> {
-  // Tạo Query Parameters để đính kèm vào URL
   const searchParams = new URLSearchParams({
     search: params.search,
     albumId: params.albumId,
     sortBy: params.sortBy,
-    userId: params.userId ?? "", // 🎯 Đính kèm userId lên Backend
+    userId: params.userId ?? "",
+    page: params.page.toString(), // 🎯 Gửi page lên backend
+    limit: params.limit.toString(), // 🎯 Gửi limit lên backend
   });
 
   const res = await fetch(`/api/media?${searchParams.toString()}`);
@@ -40,26 +46,34 @@ async function fetchRealMedia(
   return res.json();
 }
 
-export function useMedia(params: MediaQueryParams = {}): UseMediaResult {
-  // Chuẩn hóa params và đưa userId vào dependency array của useMemo
-  const normalizedParams = useMemo<Required<MediaQueryParams>>(
+export function useMedia(params: ExtendedMediaParams = {}): UseMediaResult {
+  // 🎯 Chuẩn hóa tất cả tham số, bao gồm page/limit để React Query track
+  const normalizedParams = useMemo<Required<ExtendedMediaParams>>(
     () => ({
       search: params.search?.trim() ?? "",
       albumId: params.albumId?.trim() ?? "all",
       sortBy: params.sortBy ?? "date-desc",
-      userId: params.userId?.trim() ?? "", // 🎯 Chuẩn hóa userId
+      userId: params.userId?.trim() ?? "",
+      page: params.page ?? 1, // Mặc định trang 1
+      limit: params.limit ?? 50, // Mặc định lấy 50 items
     }),
-    [params.albumId, params.search, params.sortBy, params.userId],
+    [
+      params.albumId,
+      params.search,
+      params.sortBy,
+      params.userId,
+      params.page,
+      params.limit,
+    ],
   );
 
   const query = useQuery({
-    // 🎯 Thêm normalizedParams vào queryKey giúp React Query tự động
-    // re-fetch ảnh mới ngay lập tức khi user chuyển đổi Album, tìm kiếm hoặc khi userId thay đổi
     queryKey: [MEDIA_QUERY_KEY, normalizedParams],
     queryFn: () => fetchRealMedia(normalizedParams),
-    staleTime: 2 * 60_000, // Cache dữ liệu tạm thời trong 2 phút
-    gcTime: 10 * 60_000, // Giữ dữ liệu trong bộ nhớ rác 10 phút trước khi xóa hẳn
-    placeholderData: keepPreviousData, // Giữ lại giao diện ảnh cũ trong lúc đang tải ảnh mới (tránh bị giật màn hình)
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
+    // 🎯 keepPreviousData giúp UI không bị flash khi chuyển trang
+    placeholderData: keepPreviousData,
   });
 
   return {
