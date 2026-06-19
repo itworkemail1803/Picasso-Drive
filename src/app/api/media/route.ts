@@ -78,8 +78,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items: formattedItems, total });
   } catch (error: any) {
+    console.error("❌ [API] GET /api/media Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: "Internal Server Error", details: error.message },
       { status: 500 },
     );
   }

@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db"; // File mà chúng ta đã tạo ở bước trước
+import { prisma } from "@/lib/prisma"; 
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET() {
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
     // Sử dụng aggregate để tính tổng size
-    const usage = await db.media.aggregate({
+    const usage = await prisma.media.aggregate({
       where: { userId: userId },
       _sum: {
         size: true,
@@ -23,8 +23,8 @@ export async function GET() {
     return NextResponse.json({
       used: totalBytes,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Storage API Error:", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({ error: "Internal Error", details: error.message }, { status: 500 });
   }
 }
