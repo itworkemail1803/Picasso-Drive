@@ -5,10 +5,9 @@ import { dark } from "@clerk/themes";
 import { AuthToastHandler } from "@/components/auth-toast/AuthToastHandler";
 
 export default async function HomePage(): Promise<JSX.Element> {
-  // Lấy userId trực tiếp ở tầng Server để check trạng thái Auth cực nhanh
   const { userId } = await auth();
 
-  // Trạng thái 1: ĐÃ ĐĂNG NHẬP -> Show toàn bộ Dashboard của bạn
+  // Trạng thái 1: Đã đăng nhập
   if (userId) {
     return (
       <main className="min-h-screen px-3 py-6 sm:px-4 sm:py-10 bg-slate-950 text-slate-100">
@@ -19,8 +18,7 @@ export default async function HomePage(): Promise<JSX.Element> {
               Picasso Drive
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Advanced media dashboard focused on fast client-side optimization
-              and responsive UX.
+              Advanced media dashboard focused on fast client-side optimization.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-full bg-slate-900 p-1 border border-slate-800">
@@ -35,7 +33,7 @@ export default async function HomePage(): Promise<JSX.Element> {
     );
   }
 
-  // Trạng thái 2: CHƯA ĐĂNG NHẬP -> Sử dụng <SignIn> kèm cấu hình định tuyến thông minh
+  // Trạng thái 2: Chưa đăng nhập
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-slate-100">
       <div className="w-full max-w-md flex flex-col items-center space-y-6">
@@ -51,7 +49,6 @@ export default async function HomePage(): Promise<JSX.Element> {
                   "bg-slate-950 border border-slate-800 text-slate-200 hover:bg-slate-900 transition",
                 formButtonPrimary:
                   "bg-blue-600 hover:bg-blue-500 text-white font-medium transition active:scale-[0.98]",
-                formFieldLabel: "text-slate-300",
                 formFieldInput:
                   "bg-slate-950 border border-slate-800 text-slate-100 focus:border-blue-500 transition",
                 footerActionLink:
@@ -59,17 +56,11 @@ export default async function HomePage(): Promise<JSX.Element> {
               },
             } as any
           }
-          // 🎯 ĐỊNH TUYẾN DỨT ĐIỂM:
-
-          routing="hash" // Sử dụng luồng định tuyến theo path tĩnh của Next.js
+          // Cấu hình định tuyến
+          routing="hash"
           forceRedirectUrl="/"
-          fallbackRedirectUrl="/"
+          signUpUrl="/sign-up"
         />
-
-        <p className="text-xs text-slate-500 text-center max-w-[280px]">
-          Picasso Drive — Advanced media dashboard focused on fast client-side
-          optimization.
-        </p>
       </div>
     </main>
   );
