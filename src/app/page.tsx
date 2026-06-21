@@ -57,7 +57,8 @@ export default async function HomePage(): Promise<JSX.Element> {
             } as any
           }
           // Cấu hình định tuyến
-          routing="hash"
+          routing="path"
+          path="/"
           forceRedirectUrl="/"
           signUpUrl="/sign-up"
         />
