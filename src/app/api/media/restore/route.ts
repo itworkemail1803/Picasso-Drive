@@ -1,10 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Đảm bảo đường dẫn đúng
+import { prisma } from "@/lib/prisma";
 
 export async function PATCH(req: Request) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
     const { mediaIds } = await req.json();
@@ -16,7 +18,6 @@ export async function PATCH(req: Request) {
       },
       data: {
         isDeleted: false,
-        // Có thể gán lại albumId về null hoặc album mặc định
         albumId: null,
       },
     });

@@ -1,14 +1,17 @@
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma"; 
+import { auth } from "@/app/api/auth/auth";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    const session = await auth(); // <-- Lấy session
+    const userId = session?.user?.id; // <-- Lấy ID user
 
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
     // Sử dụng aggregate để tính tổng size
     const usage = await prisma.media.aggregate({
       where: { userId: userId },
@@ -25,6 +28,9 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("Storage API Error:", error);
-    return NextResponse.json({ error: "Internal Error", details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Error", details: error.message },
+      { status: 500 },
+    );
   }
 }

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Lấy userId trực tiếp từ session Clerk
-    const { userId: authedUserId } = await auth();
-    if (!authedUserId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const { imageUrl, fileName, originalSize, size, albumId, filePath } = body;
 
-    // Validate dữ liệu đầu vào theo cấu trúc mới
     if (!imageUrl || !fileName || !size || !filePath) {
       return NextResponse.json(
         { error: "Thiếu thông tin bắt buộc để ghi nhận vào Database" },
@@ -21,35 +21,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. CHIẾN THUẬT DẬP LỖI VALIDATION: Kiểm tra xem User đã có trong Postgres chưa
-    const existingUser = await prisma.user.findUnique({
-      where: { id: authedUserId },
-    });
-
-    // Nếu chưa tồn tại -> Lấy email thật từ Clerk để khởi tạo
-    if (!existingUser) {
-      console.log(
-        `[Picasso Drive] Đang đồng bộ thông tin tài khoản cho ID: ${authedUserId}`,
-      );
-
-      const clerkUser = await currentUser();
-      // Lấy email đầu tiên trong danh sách email của Clerk, nếu xui rủi không có thì dùng chuỗi tạm
-      const userEmail =
-        clerkUser?.emailAddresses[0]?.emailAddress ||
-        `${authedUserId}@clerk.local`;
-
-      await prisma.user.create({
-        data: {
-          id: authedUserId,
-          email: userEmail, // 🎯 Đã có email bắt buộc, không còn lo lỗi Prisma nữa!
-        },
-      });
-    }
-
-    // 3. Ghi chính xác các trường dữ liệu theo đúng file schema.prisma của bạn
     const newMedia = await prisma.media.create({
       data: {
-        userId: authedUserId,
+        userId: userId,
         url: imageUrl,
         filePath: filePath,
         name: fileName,
@@ -62,7 +36,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 4. Trả về đúng cấu trúc MediaItem của Client để UI hiển thị lập tức
     return NextResponse.json(
       {
         message: "Lưu thông tin ảnh thành công!",

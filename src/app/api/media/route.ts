@@ -1,29 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
-
-interface PrismaMediaItem {
-  id: string;
-  userId: string;
-  albumId: string | null;
-  name: string;
-  url: string;
-  filePath: string;
-  originalSize: number;
-  size: number;
-  createdAt: Date;
-  isDeleted: boolean;
-}
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId)
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50"); // Mặc định lấy 50
+    const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
     const search = searchParams.get("search") || "";
@@ -43,7 +33,6 @@ export async function GET(request: NextRequest) {
       "name-asc": { name: "asc" },
     };
 
-    // Thực hiện truy vấn song song để tối ưu
     const [items, total] = await Promise.all([
       prisma.media.findMany({
         where: whereCondition,
@@ -51,7 +40,6 @@ export async function GET(request: NextRequest) {
         take: limit,
         skip: skip,
         select: {
-          // Chỉ lấy đúng cột cần thiết
           id: true,
           name: true,
           albumId: true,
@@ -65,14 +53,15 @@ export async function GET(request: NextRequest) {
       prisma.media.count({ where: whereCondition }),
     ]);
 
-    // Format dữ liệu giống cũ để frontend không lỗi
     const formattedItems = items.map((item) => ({
-      ...item,
+      id: item.id,
+      name: item.name,
       albumId: item.albumId || "all",
       createdAt: item.createdAt.toISOString(),
-      fileSize: Number(item.size || 0),
+      fileSize: Number(item.size || 0), // BigInt → Number
       originalSize: Number(item.originalSize || 0),
       previewUrl: item.url,
+      isDeleted: item.isDeleted,
       mimeType: "image/png",
     }));
 

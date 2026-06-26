@@ -1,17 +1,23 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
+import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+export default auth((req) => {
+  const isLoggedIn = !!req.auth;
+  const { nextUrl } = req;
+  const isAuthPage =
+    nextUrl.pathname.startsWith("/sign-in") ||
+    nextUrl.pathname.startsWith("/sign-up");
 
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
+  if (isAuthPage) {
+    if (isLoggedIn) return NextResponse.redirect(new URL("/", nextUrl));
+    return null;
+  }
+
+  if (!isLoggedIn) {
+    return NextResponse.redirect(new URL("/sign-in", nextUrl));
   }
 });
 
 export const config = {
-  matcher: [
-    // Chặn tất cả các route, trừ các file tĩnh và file hệ thống
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

@@ -9,15 +9,18 @@ datasource db {
 }
 
 model User {
-  id          String       @id
-  email       String       @unique
-  name        String?
-  avatarUrl   String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  albums      Album[]
-  media       Media[]
-  sharedLinks SharedLink[]
+  id            String    @id @default(cuid()) // Chuyển sang cuid để tương thích tốt với Auth.js
+  email         String    @unique
+  password      String?    // BẮT BUỘC: Để lưu mật khẩu hash
+  name          String?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Các quan hệ giữ nguyên
+  albums        Album[]
+  media         Media[]
+  sharedLinks   SharedLink[]
 
   @@map("users")
 }

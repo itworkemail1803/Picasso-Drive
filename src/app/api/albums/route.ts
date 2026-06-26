@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
-import { currentUser } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    console.log("🔍 [API] GET /api/albums Clerk UserId:", userId);
-    const userClerk = await currentUser(); // Lấy thông tin user từ Clerk
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -15,21 +13,6 @@ export async function GET() {
         { status: 401 },
       );
     }
-
-    // --- BƯỚC ĐỒNG BỘ USER MỚI ---
-    // Kiểm tra xem User này đã có trong bảng 'User' chưa, nếu chưa thì tạo mới
-    const userExists = await prisma.user.findUnique({ where: { id: userId } });
-    if (!userExists) {
-      console.log(`👤 [API] User ${userId} chưa có trong DB. Đang tạo mới...`);
-      await prisma.user.create({
-        data: {
-          id: userId,
-          email:
-            userClerk?.emailAddresses[0]?.emailAddress || "no-email@clerk.com",
-        },
-      });
-    }
-    // ----------------------------
 
     let albums = await prisma.album.findMany({
       where: { userId },
@@ -51,7 +34,7 @@ export async function GET() {
         data: defaultAlbumsToCreate.map((alb) => ({
           name: alb.name,
           slug: alb.slug,
-          userId: userId, // Lúc này userId chắc chắn đã tồn tại trong bảng User
+          userId: userId,
         })),
       });
 
@@ -76,8 +59,8 @@ export async function GET() {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth();
-    console.log("🔍 [API] DELETE /api/albums Clerk UserId:", userId);
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -95,7 +78,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // 1. Kiểm tra quyền sở hữu Album
     const album = await prisma.album.findFirst({
       where: {
         id: albumId,
@@ -110,7 +92,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // 2. Xóa Album
     await prisma.album.delete({
       where: {
         id: albumId,

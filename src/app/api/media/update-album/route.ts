@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function PATCH(req: Request) {
   try {
-    const { userId } = await auth();
-    console.log("🔍 [API] PATCH /api/media/update-album Clerk UserId:", userId);
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -27,7 +27,6 @@ export async function PATCH(req: Request) {
     const isTrash = albumId === "trash";
     const isAll = albumId === "all";
 
-    // 1. Kiểm tra quyền sở hữu Album đích (nếu không phải là trash hay all)
     if (!isTrash && !isAll) {
       const album = await prisma.album.findFirst({
         where: {
@@ -46,7 +45,6 @@ export async function PATCH(req: Request) {
       }
     }
 
-    // 2. Cập nhật trạng thái của các ảnh trong danh sách truyền lên và thuộc sở hữu của user
     const updatePayload = {
       albumId: isTrash || isAll ? null : albumId,
       isDeleted: isTrash,

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/app/api/auth/auth";
 import { prisma } from "@/lib/prisma";
 
-// ──────────────────────────────────────────────────────────────
-// POST /api/share  → Tạo share link mới (cần đăng nhập)
-// ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -26,7 +25,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Kiểm tra quyền sở hữu album
     const album = await prisma.album.findFirst({
       where: { id: albumId, userId },
     });
@@ -47,7 +45,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log(`✅ [API] Đã tạo share link: ${sharedLink.id} cho album: ${albumId}`);
+    console.log(
+      `✅ [API] Đã tạo share link: ${sharedLink.id} cho album: ${albumId}`,
+    );
 
     return NextResponse.json(
       {
@@ -69,12 +69,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// GET /api/share  → Lấy danh sách share links của user (cần đăng nhập)
-// ──────────────────────────────────────────────────────────────
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -105,12 +104,11 @@ export async function GET() {
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// DELETE /api/share  → Thu hồi share link (cần đăng nhập)
-// ──────────────────────────────────────────────────────────────
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -120,7 +118,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Thiếu shareId" }, { status: 400 });
     }
 
-    // Chỉ cho phép xóa link của chính mình
     const link = await prisma.sharedLink.findFirst({
       where: { id: shareId, userId },
     });

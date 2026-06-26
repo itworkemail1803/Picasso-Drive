@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useState } from "react";
-import { ClerkProvider } from "@clerk/nextjs"; // 👈 Thêm dòng này
+import { SessionProvider } from "next-auth/react"; // 👈 Thêm dòng này
 
 type ProvidersProps = {
   readonly children: ReactNode;
@@ -23,10 +23,10 @@ export function Providers({ children }: ProvidersProps): JSX.Element {
   );
 
   return (
-    <ClerkProvider>
+    <SessionProvider>
       {" "}
       {/* 👈 Bọc ngoài cùng */}
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </ClerkProvider>
+    </SessionProvider>
   );
 }
