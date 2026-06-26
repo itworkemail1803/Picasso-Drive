@@ -2,19 +2,19 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 
 export function AuthToastHandler() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    // Kiểm tra đã load xong và đang đăng nhập
-    if (isLoaded && isSignedIn) {
+    // Trạng thái 'authenticated' nghĩa là đã đăng nhập thành công
+    if (status === "authenticated" && session?.user) {
       toast.success(
         "Đăng nhập thành công! Chào mừng bạn đến với Picasso Drive.",
       );
     }
-  }, [isLoaded, isSignedIn]);
+  }, [status, session]);
 
   return null; // Component này không render gì ra giao diện
 }
