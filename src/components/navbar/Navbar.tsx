@@ -1,6 +1,6 @@
 import { auth, signOut } from "@/app/api/auth/auth";
 import Link from "next/link";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export async function Navbar() {
   const session = await auth();
@@ -18,10 +18,10 @@ export async function Navbar() {
               Welcome back, {session.user.name}
             </span>
 
-            {/* Form đăng xuất sử dụng Server Action */}
             <form
               action={async () => {
                 "use server";
+                // ✅ Dùng redirectTo thay vì { redirect: true, callbackUrl }
                 await signOut({ redirectTo: "/sign-in" });
               }}
             >

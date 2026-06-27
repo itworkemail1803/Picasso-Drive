@@ -7,13 +7,12 @@ import bcrypt from "bcryptjs";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-
-  // ✅ Auth.js v5 đọc AUTH_SECRET tự động từ env — không cần khai báo `secret` thủ công.
-  // Nhưng để tường minh và tránh nhầm lẫn, vẫn trỏ đúng tên biến:
   secret: process.env.AUTH_SECRET,
-
-  // ✅ Bắt buộc cho Netlify / mọi host không phải Vercel
   trustHost: true,
+
+  pages: {
+    signIn: "/sign-in",
+  },
 
   providers: [
     Credentials({
