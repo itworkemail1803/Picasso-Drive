@@ -1,13 +1,20 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma"; // Đảm bảo bạn đã export prisma client
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-  secret: process.env.BETTER_AUTH_SECRET,
+
+  // ✅ Auth.js v5 đọc AUTH_SECRET tự động từ env — không cần khai báo `secret` thủ công.
+  // Nhưng để tường minh và tránh nhầm lẫn, vẫn trỏ đúng tên biến:
+  secret: process.env.AUTH_SECRET,
+
+  // ✅ Bắt buộc cho Netlify / mọi host không phải Vercel
+  trustHost: true,
+
   providers: [
     Credentials({
       credentials: {
@@ -34,6 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+
   callbacks: {
     async session({ session, token }) {
       if (session.user && token.sub) {
