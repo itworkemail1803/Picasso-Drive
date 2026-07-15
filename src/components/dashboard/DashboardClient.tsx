@@ -5,6 +5,7 @@ import { UploadZone } from "@/components/dashboard/UploadZone";
 import { ImageGrid } from "@/components/dashboard/ImageGrid";
 import { useUploadStore } from "@/store/useUploadStore";
 import { useAlbumStore } from "@/store/useAlbumStore";
+import { useMediaStore } from "@/store/useMediaStore";
 import {
   ALBUM_ALL_ID,
   ALBUM_TRASH_ID,
@@ -74,45 +75,44 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
-  const queue = useUploadStore((state) => state.queue);
-  const mediaOverrides = useAlbumStore((state) => state.mediaOverrides);
-  const albums = useAlbumStore((state) => state.albums);
-  const setActiveAlbum = useAlbumStore((state) => state.setActiveAlbum);
-  const fetchAlbums = useAlbumStore((state) => state.fetchAlbums);
-  const activeAlbumId = useAlbumStore((state) => state.activeAlbumId);
+  const queue = useUploadStore((s) => s.queue);
+
+  // ── Album store (albums + navigation) ──
+  const albums = useAlbumStore((s) => s.albums);
+  const activeAlbumId = useAlbumStore((s) => s.activeAlbumId);
+  const setActiveAlbum = useAlbumStore((s) => s.setActiveAlbum);
+  const fetchAlbums = useAlbumStore((s) => s.fetchAlbums);
+
+  // ── Media store (overrides + deleted ids) ──
+  const mediaOverrides = useMediaStore((s) => s.mediaOverrides);
+  const deletedMediaIds = useMediaStore((s) => s.deletedMediaIds);
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [page, setPage] = useState(1);
 
   const brokenMediaIdsRef = useRef<Set<string>>(new Set());
   const [renderTrigger, setRenderTrigger] = useState(0);
-  const deletedMediaIds = useAlbumStore((state) => state.deletedMediaIds);
-  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchAlbums();
   }, [fetchAlbums]);
 
+  // Sync store → local filters (sidebar click)
   useEffect(() => {
-    // Chỉ cập nhật nếu thực sự có sự khác biệt để tránh loop
     if (activeAlbumId !== filters.albumId) {
       setFilters((prev) => ({ ...prev, albumId: activeAlbumId }));
     }
-  }, [activeAlbumId]); // Chỉ phụ thuộc vào Store thay đổi
+  }, [activeAlbumId]);
 
-  // Khi filter local thay đổi (người dùng click vào UI filter), cập nhật ngược lại vào Store
+  // Sync local filters → store (FilterBar change)
   useEffect(() => {
     if (filters.albumId !== activeAlbumId) {
       setActiveAlbum(filters.albumId);
     }
   }, [filters.albumId, setActiveAlbum]);
 
-  // Luôn lấy toàn bộ danh sách làm trục dữ liệu đối sánh cho Client xử lý phân vùng hiển thị
   const queryFilters = useMemo(
-    () => ({
-      ...filters,
-      albumId: ALBUM_ALL_ID,
-      page: page,
-    }),
+    () => ({ ...filters, albumId: ALBUM_ALL_ID, page }),
     [filters.search, filters.sortBy, page],
   );
 
@@ -122,8 +122,8 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
     isLoading,
     isError,
     errorMessage,
-    isFetching,
-  } = useMedia({ ...queryFilters, userId, page: page, limit: 50 });
+  } = useMedia({ ...queryFilters, userId, page, limit: 50 });
+
   const hasMore = total > page * 50;
 
   const queuedItems = useMemo(() => mapQueueToMediaItems(queue), [queue]);
@@ -136,58 +136,39 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
   }, []);
 
   const baseMergedMedia = useMemo(() => {
-    const mediaMap = new Map<string, MediaItem>();
-
-    cachedMedia.forEach((item) => {
-      mediaMap.set(item.id, item);
-    });
-
-    queuedItems.forEach((item) => {
-      mediaMap.set(item.id, item);
-    });
-
-    return Array.from(mediaMap.values());
+    const map = new Map<string, MediaItem>();
+    cachedMedia.forEach((item) => map.set(item.id, item));
+    queuedItems.forEach((item) => map.set(item.id, item));
+    return Array.from(map.values());
   }, [cachedMedia, queuedItems]);
 
-  // 🎯 BỘ LỌC ĐA KỊCH BẢN CHUẨN SENIOR (Xử lý dứt điểm rác và phân tách album)
   const mergedMedia = useMemo(() => {
     const combined = applyMediaOverrides(baseMergedMedia, mediaOverrides);
 
     const clientFiltered = combined.filter((item) => {
       if (deletedMediaIds.includes(item.id)) return false;
-      // Logic: Nếu ảnh đã nằm trong Trash (do override hoặc DB gốc)
-      if (item.isDeleted) {
-        return filters.albumId === ALBUM_TRASH_ID;
-      }
-
-      // Nếu ảnh không nằm trong Trash:
-      // Nếu user đang xem Trash -> Loại bỏ ảnh này
+      if (item.isDeleted) return filters.albumId === ALBUM_TRASH_ID;
       if (filters.albumId === ALBUM_TRASH_ID) return false;
-
-      // Nếu user đang xem "All", hiển thị tất cả ảnh không bị xóa
       if (filters.albumId === ALBUM_ALL_ID) return true;
-
-      // Nếu user đang xem album cụ thể
       return item.albumId === filters.albumId;
     });
 
-    // Thực thi tiếp bộ lọc tìm kiếm text (Nếu có)
     const searchFiltered = filterVisibleMedia(clientFiltered, {
       albumId: filters.albumId,
       search: filters.search,
     });
 
-    const cleanVisible = searchFiltered.filter(
-      (item) => !brokenMediaIdsRef.current.has(item.id),
+    return sortMediaItems(
+      searchFiltered.filter((item) => !brokenMediaIdsRef.current.has(item.id)),
+      filters.sortBy,
     );
-
-    return sortMediaItems(cleanVisible, filters.sortBy);
   }, [
     baseMergedMedia,
     filters.albumId,
     filters.search,
     filters.sortBy,
     mediaOverrides,
+    deletedMediaIds,
     renderTrigger,
   ]);
 
@@ -204,8 +185,8 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
     () => [
       { id: ALBUM_ALL_ID, label: "All Albums" },
       ...albums
-        .filter((album) => album.id !== "trash")
-        .map((album) => ({ id: album.id, label: album.name })),
+        .filter((a) => a.id !== "trash")
+        .map((a) => ({ id: a.id, label: a.name })),
     ],
     [albums],
   );
@@ -231,18 +212,18 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
         />
 
         <section className="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-2.5 text-sm text-slate-300 sm:px-4 sm:py-3">
-          {isLoading ? <p>Loading media library…</p> : null}
-          {isError ? (
+          {isLoading && <p>Loading media library…</p>}
+          {isError && (
             <p className="text-rose-300">
               Failed to load media: {errorMessage ?? "Unknown error"}
             </p>
-          ) : null}
-          {!isLoading && !isError ? (
+          )}
+          {!isLoading && !isError && (
             <p>
               Library: {allMediaForSidebar.length} item(s) · Showing{" "}
               {mergedMedia.length} in view.
             </p>
-          ) : null}
+          )}
         </section>
 
         <ImageGrid
@@ -250,6 +231,7 @@ export function DashboardClient({ userId }: DashboardClientProps): JSX.Element {
           onMediaLoadError={handleMediaLoadError}
           currentAlbumId={filters.albumId}
         />
+
         {hasMore && (
           <div className="flex justify-center p-6">
             <button

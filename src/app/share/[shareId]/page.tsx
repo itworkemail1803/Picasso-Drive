@@ -3,13 +3,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShareGallery } from "./ShareGallery";
 
-// ──────────────────────────────────────────────────────────────
-// ⚠️ TRANG NÀY HOÀN TOÀN ĐỘC LẬP VỚI DASHBOARD
-// - Không import bất kỳ component nào từ @/components/dashboard
-// - Không dùng Zustand store, không dùng Clerk auth
-// - Server Component — query Prisma trực tiếp
-// ──────────────────────────────────────────────────────────────
-
 type SharePageProps = {
   params: Promise<{ shareId: string }>;
 };
@@ -23,9 +16,7 @@ export async function generateMetadata({
     select: { album: { select: { name: true } } },
   });
 
-  if (!link) {
-    return { title: "Album not found — Picasso Drive" };
-  }
+  if (!link) return { title: "Album not found — Picasso Drive" };
 
   return {
     title: `${link.album.name} — Shared Album · Picasso Drive`,
@@ -47,12 +38,7 @@ export default async function SharePage({
           name: true,
           media: {
             where: { isDeleted: false },
-            select: {
-              id: true,
-              name: true,
-              url: true,
-              size: true,
-            },
+            select: { id: true, name: true, url: true, size: true },
             orderBy: { createdAt: "asc" },
           },
         },
@@ -61,47 +47,46 @@ export default async function SharePage({
     },
   });
 
-  // Không tồn tại
-  if (!link) {
-    notFound();
-  }
+  if (!link) notFound();
 
   // Hết hạn
-  const isExpired = link.expiresAt !== null && new Date() > link.expiresAt;
-  if (isExpired) {
+  if (link.expiresAt && new Date() > link.expiresAt) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: "1rem",
-          background: "#020617",
-          color: "#94a3b8",
-          padding: "2rem",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: "3rem" }}>⏳</div>
-        <h1 style={{ color: "#f1f5f9", fontSize: "1.5rem", margin: 0 }}>
-          Link đã hết hạn
-        </h1>
-        <p style={{ maxWidth: "360px", lineHeight: 1.6 }}>
-          Share link này đã hết hạn vào{" "}
-          <strong style={{ color: "#fca5a5" }}>
-            {new Date(link.expiresAt!).toLocaleDateString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </strong>
-          . Hãy liên hệ người chia sẻ để nhận link mới.
-        </p>
-      </main>
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center rounded-2xl border border-white/[0.06] bg-stone-900/50 p-8">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#f87171"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <h1 className="font-serif text-xl text-stone-100 mb-2">
+            Link đã hết hạn
+          </h1>
+          <p className="text-sm font-light text-stone-400 leading-relaxed">
+            Share link này đã hết hạn vào{" "}
+            <span className="text-rose-400 font-medium">
+              {new Date(link.expiresAt).toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+            . Hãy liên hệ người chia sẻ để nhận link mới.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -109,7 +94,7 @@ export default async function SharePage({
     id: m.id,
     name: m.name,
     url: m.url,
-    fileSize: m.size,
+    fileSize: Number(m.size), // ✅ Convert BigInt → Number
   }));
 
   return (

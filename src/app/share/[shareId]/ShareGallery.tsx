@@ -1,12 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ShareMediaItem } from "@/types/share.types";
-
-// ──────────────────────────────────────────────────────────────
-// ShareGallery — Client Component riêng biệt cho trang public share
-// ⚠️ KHÔNG import bất kỳ thứ gì từ @/store hay @/components/dashboard
-// ──────────────────────────────────────────────────────────────
 
 interface ShareGalleryProps {
   shareId: string;
@@ -17,186 +12,13 @@ interface ShareGalleryProps {
   media: ShareMediaItem[];
 }
 
-// ─── Inline styles as constants for readability ───────────────
-const S = {
-  page: {
-    minHeight: "100vh",
-    background: "#020617",
-    color: "#f1f5f9",
-    padding: "0",
-  } as React.CSSProperties,
-
-  header: {
-    background: "rgba(15, 23, 42, 0.95)",
-    backdropFilter: "blur(20px)",
-    borderBottom: "1px solid rgba(30, 41, 59, 0.8)",
-    padding: "1.25rem 1.5rem",
-    position: "sticky" as const,
-    top: 0,
-    zIndex: 40,
-  } as React.CSSProperties,
-
-  headerInner: {
-    maxWidth: "90rem",
-    margin: "0 auto",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "1rem",
-    flexWrap: "wrap" as const,
-  } as React.CSSProperties,
-
-  logoRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-  } as React.CSSProperties,
-
-  badge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.35rem",
-    padding: "0.25rem 0.65rem",
-    background: "rgba(37, 99, 235, 0.15)",
-    border: "1px solid rgba(37, 99, 235, 0.35)",
-    borderRadius: "9999px",
-    fontSize: "0.7rem",
-    fontWeight: 600,
-    color: "#93c5fd",
-    letterSpacing: "0.04em",
-    textTransform: "uppercase" as const,
-  } as React.CSSProperties,
-
-  albumTitle: {
-    fontSize: "1.2rem",
-    fontWeight: 700,
-    color: "#f1f5f9",
-    margin: "0",
-  } as React.CSSProperties,
-
-  meta: {
-    fontSize: "0.78rem",
-    color: "#64748b",
-    margin: "0.2rem 0 0",
-  } as React.CSSProperties,
-
-  btn: (variant: "primary" | "ghost" | "danger") =>
-    ({
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "0.4rem",
-      padding: "0.5rem 1rem",
-      borderRadius: "8px",
-      border: "none",
-      fontSize: "0.8rem",
-      fontWeight: 600,
-      cursor: "pointer",
-      transition: "all 0.15s ease",
-      ...(variant === "primary"
-        ? { background: "#2563eb", color: "#fff" }
-        : variant === "danger"
-          ? {
-              background: "rgba(220,38,38,0.15)",
-              color: "#fca5a5",
-              border: "1px solid rgba(220,38,38,0.3)",
-            }
-          : {
-              background: "rgba(30,41,59,0.8)",
-              color: "#94a3b8",
-              border: "1px solid rgba(51,65,85,0.6)",
-            }),
-    }) as React.CSSProperties,
-
-  grid: {
-    maxWidth: "90rem",
-    margin: "0 auto",
-    padding: "1.5rem",
-    columns: "repeat(auto-fill, minmax(200px, 1fr))",
-    columnGap: "0.75rem",
-  } as React.CSSProperties,
-
-  card: (hovered: boolean) =>
-    ({
-      display: "inline-block",
-      width: "100%",
-      breakInside: "avoid",
-      marginBottom: "0.75rem",
-      borderRadius: "12px",
-      overflow: "hidden",
-      border: `1px solid ${hovered ? "#334155" : "#1e293b"}`,
-      background: "#0f172a",
-      cursor: "pointer",
-      transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)",
-      transform: hovered ? "translateY(-2px)" : "translateY(0)",
-      boxShadow: hovered ? "0 20px 40px rgba(0,0,0,0.5)" : "none",
-    }) as React.CSSProperties,
-
-  img: (loaded: boolean) =>
-    ({
-      display: "block",
-      width: "100%",
-      height: "auto",
-      objectFit: "cover" as const,
-      opacity: loaded ? 1 : 0,
-      transition: "opacity 0.4s ease",
-    }) as React.CSSProperties,
-
-  imgCaption: {
-    padding: "0.5rem 0.65rem",
-    borderTop: "1px solid #1e293b",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-  } as React.CSSProperties,
-
-  // Lightbox
-  overlay: {
-    position: "fixed" as const,
-    inset: 0,
-    background: "rgba(2,6,23,0.97)",
-    backdropFilter: "blur(8px)",
-    zIndex: 9999,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "1rem",
-  } as React.CSSProperties,
-
-  lightboxImg: {
-    maxWidth: "90vw",
-    maxHeight: "85vh",
-    objectFit: "contain" as const,
-    borderRadius: "8px",
-    boxShadow: "0 40px 80px rgba(0,0,0,0.8)",
-  } as React.CSSProperties,
-
-  lightboxNav: {
-    position: "absolute" as const,
-    bottom: "1.5rem",
-    left: "50%",
-    transform: "translateX(-50%)",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-    background: "rgba(15,23,42,0.9)",
-    backdropFilter: "blur(12px)",
-    padding: "0.6rem 1rem",
-    borderRadius: "9999px",
-    border: "1px solid rgba(30,41,59,0.8)",
-  } as React.CSSProperties,
-};
-
-// ─── Helper ────────────────────────────────────────────────────
 function formatBytes(bytes: number | bigint): string {
-  // Chuyển BigInt sang Number ngay tại đây
-  const numBytes = Number(bytes);
-
-  if (numBytes === 0) return "0 B";
+  const n = Number(bytes);
+  if (n === 0) return "0 B";
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(numBytes) / Math.log(k));
-  return `${parseFloat((numBytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(n) / Math.log(k));
+  return `${parseFloat((n / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 function formatDate(iso: string): string {
@@ -207,7 +29,7 @@ function formatDate(iso: string): string {
   });
 }
 
-// ─── Image Card ────────────────────────────────────────────────
+// ── Image Card ─────────────────────────────────────────────────
 function ShareImageCard({
   item,
   onClick,
@@ -215,73 +37,170 @@ function ShareImageCard({
   item: ShareMediaItem;
   onClick: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   return (
     <div
-      style={S.card(hovered)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       onClick={onClick}
+      className="group inline-block w-full break-inside-avoid mb-3 rounded-xl overflow-hidden border border-white/[0.06] bg-stone-900/50 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[0.12] hover:shadow-2xl hover:shadow-black/50"
     >
-      <div
-        style={{
-          position: "relative",
-          background: "#0f172a",
-          minHeight: "120px",
-        }}
-      >
+      <div className="relative min-h-[120px] bg-stone-900">
         {!loaded && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(90deg, #1e293b 25%, #0f172a 50%, #1e293b 75%)",
-              backgroundSize: "200% 100%",
-              animation: "shimmer 1.5s infinite",
-              minHeight: "120px",
-            }}
-          />
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-stone-800 via-stone-900 to-stone-800 min-h-[120px]" />
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.url}
           alt={item.name}
-          style={S.img(loaded)}
-          onLoad={() => setLoaded(true)}
           loading="lazy"
+          onLoad={() => setLoaded(true)}
+          className={`block w-full h-auto object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
-      </div>
-      <div style={S.imgCaption}>
-        <span
-          style={{
-            fontSize: "0.72rem",
-            color: "#64748b",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.name}
-        </span>
-        <span
-          style={{
-            fontSize: "0.68rem",
-            color: "#475569",
-            fontFamily: "monospace",
-            flexShrink: 0,
-          }}
-        >
-          {formatBytes(item.fileSize)}
-        </span>
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+          <div className="flex items-center justify-between w-full">
+            <p className="text-[11px] text-stone-200 font-medium truncate">
+              {item.name}
+            </p>
+            <span className="text-[10px] font-mono text-stone-400 shrink-0 ml-2">
+              {formatBytes(item.fileSize)}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────
+// ── Lightbox ───────────────────────────────────────────────────
+function Lightbox({
+  item,
+  index,
+  total,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  item: ShareMediaItem;
+  index: number;
+  total: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") onNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col"
+      onClick={onClose}
+    >
+      {/* Top bar */}
+      <div
+        className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/[0.05]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm text-stone-300 font-medium truncate max-w-xs">
+          {item.name}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-stone-500 tabular-nums">
+            {index + 1} / {total}
+          </span>
+          <a
+            href={item.url}
+            download={item.name}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] text-xs text-stone-400 hover:text-stone-200 hover:bg-white/[0.06] transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download
+          </a>
+          <button
+            onClick={onClose}
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.03] text-stone-400 hover:text-stone-200 hover:bg-white/[0.06] transition-colors"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Image */}
+      <div
+        className="flex-1 flex items-center justify-center p-4 sm:p-8 min-h-0"
+        onClick={onClose}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.url}
+          alt={item.name}
+          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+
+      {/* Bottom nav */}
+      <div
+        className="shrink-0 flex items-center justify-center gap-3 py-4 border-t border-white/[0.05]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onPrev}
+          className="h-9 px-4 flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] text-sm text-stone-400 hover:text-stone-200 hover:bg-white/[0.06] transition-colors"
+        >
+          ‹ Prev
+        </button>
+        <span className="text-xs text-stone-600 font-mono tabular-nums">
+          {formatBytes(item.fileSize)}
+        </span>
+        <button
+          onClick={onNext}
+          className="h-9 px-4 flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] text-sm text-stone-400 hover:text-stone-200 hover:bg-white/[0.06] transition-colors"
+        >
+          Next ›
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main ───────────────────────────────────────────────────────
 export function ShareGallery({
   albumName,
   ownerName,
@@ -293,85 +212,61 @@ export function ShareGallery({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  // ─── Lightbox navigation ───────────────────────────────────
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
-
-  const prevImage = useCallback(() => {
-    setLightboxIndex((i) =>
-      i === null ? null : i === 0 ? media.length - 1 : i - 1,
-    );
-  }, [media.length]);
-
-  const nextImage = useCallback(() => {
-    setLightboxIndex((i) =>
-      i === null ? null : i === media.length - 1 ? 0 : i + 1,
-    );
-  }, [media.length]);
-
-  // Keyboard navigation for lightbox
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft") prevImage();
-      if (e.key === "ArrowRight") nextImage();
-    },
-    [closeLightbox, prevImage, nextImage],
+  const prevImage = useCallback(
+    () =>
+      setLightboxIndex((i) =>
+        i === null ? null : i === 0 ? media.length - 1 : i - 1,
+      ),
+    [media.length],
+  );
+  const nextImage = useCallback(
+    () =>
+      setLightboxIndex((i) =>
+        i === null ? null : i === media.length - 1 ? 0 : i + 1,
+      ),
+    [media.length],
   );
 
-  // ─── Client-side ZIP download with jszip ──────────────────
   const handleDownloadAll = useCallback(async () => {
     if (isDownloading || media.length === 0) return;
     setIsDownloading(true);
     setDownloadProgress(0);
 
     try {
-      // Dynamic import — jszip chỉ load khi cần (code splitting)
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
       const folder = zip.folder(albumName) ?? zip;
 
       let completed = 0;
-      const total = media.length;
+      const BATCH = 5;
 
-      // Fetch tất cả ảnh song song (batch theo nhóm 5 để tránh flood)
-      const BATCH_SIZE = 5;
-      for (let i = 0; i < total; i += BATCH_SIZE) {
-        const batch = media.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < media.length; i += BATCH) {
         await Promise.all(
-          batch.map(async (item) => {
+          media.slice(i, i + BATCH).map(async (item) => {
             try {
               const res = await fetch(item.url);
-              if (!res.ok) throw new Error(`Failed: ${item.name}`);
+              if (!res.ok) return;
               const blob = await res.blob();
-
-              // Giữ nguyên tên file, xử lý trùng tên bằng index
-              const ext = item.name.split(".").pop() || "jpg";
-              const safeName = item.name.replace(/[/\\?%*:|"<>]/g, "-");
-              folder.file(
-                safeName.endsWith(`.${ext}`) ? safeName : `${safeName}.${ext}`,
-                blob,
-              );
+              const safe = item.name.replace(/[/\\?%*:|"<>]/g, "-");
+              folder.file(safe, blob);
             } catch {
-              // Bỏ qua ảnh lỗi, không dừng toàn bộ process
+              /* bỏ qua ảnh lỗi */
             } finally {
               completed++;
-              setDownloadProgress(Math.round((completed / total) * 100));
+              setDownloadProgress(Math.round((completed / media.length) * 100));
             }
           }),
         );
       }
 
-      // Tạo blob và trigger download
       const blob = await zip.generateAsync(
         {
           type: "blob",
           compression: "DEFLATE",
           compressionOptions: { level: 6 },
         },
-        (meta) => {
-          // meta.percent là progress của quá trình zip compression
-          setDownloadProgress(Math.round(meta.percent));
-        },
+        (meta) => setDownloadProgress(Math.round(meta.percent)),
       );
 
       const url = URL.createObjectURL(blob);
@@ -382,284 +277,148 @@ export function ShareGallery({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("❌ ZIP Download Error:", error);
-      alert("Không thể tải ZIP. Vui lòng thử lại.");
+    } catch (err) {
+      console.error("ZIP Error:", err);
     } finally {
       setIsDownloading(false);
       setDownloadProgress(0);
     }
   }, [isDownloading, media, albumName]);
 
-  const activeLightboxItem =
-    lightboxIndex !== null ? media[lightboxIndex] : null;
-
   return (
-    <>
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.96); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        * { box-sizing: border-box; }
-      `}</style>
-
-      <div style={S.page}>
-        {/* ── Header ────────────────────────────────────────── */}
-        <header style={S.header}>
-          <div style={S.headerInner}>
-            <div>
-              <div style={S.logoRow}>
-                <span style={S.badge}>
-                  <span>🔗</span> Shared Album
-                </span>
-                {expiresAt && (
-                  <span
-                    style={{
-                      fontSize: "0.7rem",
-                      color: "#fb923c",
-                      background: "rgba(251,146,60,0.1)",
-                      border: "1px solid rgba(251,146,60,0.3)",
-                      borderRadius: "9999px",
-                      padding: "0.2rem 0.55rem",
-                    }}
-                  >
-                    Hết hạn: {formatDate(expiresAt)}
-                  </span>
-                )}
-              </div>
-              <h1 style={S.albumTitle}>{albumName}</h1>
-              <p style={S.meta}>
-                {media.length} ảnh
-                {ownerName ? ` · Chia sẻ bởi ${ownerName}` : ""}
-                {" · "}
-                {formatDate(createdAt)}
-                {" · "}
-                <span
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "#475569",
-                    fontFamily: "system-ui, sans-serif",
-                  }}
+    <div className="min-h-screen bg-stone-950 text-stone-200 font-sans">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.05] bg-stone-950/90 backdrop-blur-xl">
+        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-[10px] font-semibold uppercase tracking-widest text-amber-400">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  Picasso Drive
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+                Shared Album
+              </span>
+              {expiresAt && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400">
+                  Hết hạn {formatDate(expiresAt)}
                 </span>
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              {media.length > 0 && (
-                <button
-                  style={S.btn("primary")}
-                  onClick={handleDownloadAll}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <>
-                      <span style={{ fontSize: "0.75rem" }}>⏳</span>
-                      {downloadProgress > 0
-                        ? `${downloadProgress}%`
-                        : "Đang chuẩn bị…"}
-                    </>
-                  ) : (
-                    <>
-                      <span>⬇</span>
-                      Tải tất cả (ZIP)
-                    </>
-                  )}
-                </button>
               )}
             </div>
-          </div>
-
-          {/* Progress bar */}
-          {isDownloading && (
-            <div
-              style={{
-                height: "2px",
-                background: "#1e293b",
-                marginTop: "0.75rem",
-                borderRadius: "9999px",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${downloadProgress}%`,
-                  background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
-                  transition: "width 0.2s ease",
-                  borderRadius: "9999px",
-                }}
-              />
-            </div>
-          )}
-        </header>
-
-        {/* ── Gallery Grid ───────────────────────────────────── */}
-        <main
-          style={{ maxWidth: "90rem", margin: "0 auto", padding: "1.5rem" }}
-        >
-          {media.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "5rem 1rem",
-                color: "#475569",
-              }}
-            >
-              <p style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🖼️</p>
-              <p>Album này chưa có ảnh nào.</p>
-            </div>
-          ) : (
-            <div
-              style={{
-                columnCount: "auto",
-                columnWidth: "200px",
-                columnGap: "0.75rem",
-              }}
-            >
-              {media.map((item, index) => (
-                <ShareImageCard
-                  key={item.id}
-                  item={item}
-                  onClick={() => setLightboxIndex(index)}
-                />
-              ))}
-            </div>
-          )}
-        </main>
-
-        {/* ── Footer ────────────────────────────────────────── */}
-        <footer
-          style={{
-            textAlign: "center",
-            padding: "2rem 1rem",
-            borderTop: "1px solid #1e293b",
-            color: "#334155",
-            fontSize: "0.75rem",
-          }}
-        >
-          Powered by{" "}
-          <span style={{ color: "#475569", fontWeight: 600 }}>
-            Picasso Drive
-          </span>
-        </footer>
-      </div>
-
-      {/* ── Lightbox ─────────────────────────────────────────── */}
-      {activeLightboxItem && (
-        <div
-          style={S.overlay}
-          onClick={closeLightbox}
-          onKeyDown={handleKeyDown}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Lightbox: ${activeLightboxItem.name}`}
-          tabIndex={0}
-        >
-          <button
-            style={{
-              position: "absolute",
-              top: "1rem",
-              right: "1.25rem",
-              background: "rgba(15,23,42,0.8)",
-              border: "1px solid #1e293b",
-              borderRadius: "8px",
-              color: "#94a3b8",
-              fontSize: "1.2rem",
-              cursor: "pointer",
-              padding: "0.4rem 0.7rem",
-              lineHeight: 1,
-              zIndex: 10,
-            }}
-            onClick={closeLightbox}
-            aria-label="Close lightbox"
-          >
-            ✕
-          </button>
-
-          <div
-            style={{ animation: "fadeIn 0.2s ease", textAlign: "center" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={activeLightboxItem.url}
-              alt={activeLightboxItem.name}
-              style={S.lightboxImg}
-            />
-            <p
-              style={{
-                marginTop: "0.75rem",
-                fontSize: "0.8rem",
-                color: "#64748b",
-              }}
-            >
-              {activeLightboxItem.name} ·{" "}
-              {formatBytes(activeLightboxItem.fileSize)}
+            <h1 className="font-serif text-xl text-stone-100">{albumName}</h1>
+            <p className="text-xs text-stone-500 mt-0.5">
+              {media.length} ảnh
+              {ownerName && ` · Chia sẻ bởi ${ownerName}`}
+              {" · "}
+              {formatDate(createdAt)}
             </p>
           </div>
 
-          {/* Navigation */}
-          <div style={S.lightboxNav} onClick={(e) => e.stopPropagation()}>
+          {media.length > 0 && (
             <button
-              style={{
-                ...S.btn("ghost"),
-                padding: "0.4rem 0.75rem",
-                fontSize: "1rem",
-              }}
-              onClick={prevImage}
-              aria-label="Previous image"
+              onClick={handleDownloadAll}
+              disabled={isDownloading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/90 text-stone-900 text-sm font-medium hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              ‹
+              {isDownloading ? (
+                <>
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-stone-900/30 border-t-stone-900 animate-spin" />
+                  {downloadProgress > 0
+                    ? `${downloadProgress}%`
+                    : "Đang chuẩn bị…"}
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Tải tất cả (ZIP)
+                </>
+              )}
             </button>
-            <span
-              style={{
-                fontSize: "0.78rem",
-                color: "#64748b",
-                minWidth: "60px",
-                textAlign: "center",
-              }}
-            >
-              {lightboxIndex! + 1} / {media.length}
-            </span>
-            <button
-              style={{
-                ...S.btn("ghost"),
-                padding: "0.4rem 0.75rem",
-                fontSize: "1rem",
-              }}
-              onClick={nextImage}
-              aria-label="Next image"
-            >
-              ›
-            </button>
-            <div
-              style={{ width: "1px", background: "#1e293b", height: "1rem" }}
-            />
-            <a
-              href={activeLightboxItem.url}
-              download={activeLightboxItem.name}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                ...S.btn("ghost"),
-                padding: "0.4rem 0.75rem",
-                textDecoration: "none",
-                fontSize: "0.75rem",
-              }}
-              aria-label="Download image"
-            >
-              ⬇
-            </a>
-          </div>
+          )}
         </div>
+
+        {/* Progress bar */}
+        {isDownloading && (
+          <div className="h-0.5 bg-stone-800">
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-200"
+              style={{ width: `${downloadProgress}%` }}
+            />
+          </div>
+        )}
+      </header>
+
+      {/* ── Gallery ── */}
+      <main className="max-w-[90rem] mx-auto px-4 sm:px-6 py-6">
+        {media.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-stone-600">
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="mb-3 opacity-40"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <p className="text-sm">Album này chưa có ảnh nào.</p>
+          </div>
+        ) : (
+          <div className="columns-2 sm:columns-3 md:columns-4 xl:columns-5 gap-3">
+            {media.map((item, index) => (
+              <ShareImageCard
+                key={item.id}
+                item={item}
+                onClick={() => setLightboxIndex(index)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* ── Footer ── */}
+      <footer className="text-center py-8 border-t border-white/[0.04] text-xs text-stone-700">
+        Powered by{" "}
+        <span className="text-stone-500 font-medium">Picasso Drive</span>
+      </footer>
+
+      {/* ── Lightbox ── */}
+      {lightboxIndex !== null && media[lightboxIndex] && (
+        <Lightbox
+          item={media[lightboxIndex]}
+          index={lightboxIndex}
+          total={media.length}
+          onClose={closeLightbox}
+          onPrev={prevImage}
+          onNext={nextImage}
+        />
       )}
-    </>
+    </div>
   );
 }

@@ -6,13 +6,13 @@ import { MediaItem, ALBUM_TRASH_ID } from "@/types/image.types";
 import { ImageGridItem } from "@/components/dashboard/image-grid/ImageGridItem";
 import { MediaLightbox } from "@/components/dashboard/lightbox/MediaLightbox";
 import { useAlbumStore } from "@/store/useAlbumStore";
+import { useMediaStore } from "@/store/useMediaStore";
 import {
   CheckSquare,
   Square,
   Trash2,
   RotateCcw,
   FolderPlus,
-  ArrowRight,
 } from "lucide-react";
 
 interface ImageGridProps {
@@ -37,16 +37,20 @@ export function ImageGrid({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeMediaId, setActiveMediaId] = useState<string | null>(null);
 
-  // Lấy dữ liệu từ store
-  const { restoreMedia, permanentlyDeleteMedia, moveMediaToAlbum, albums } =
-    useAlbumStore();
+  // ── Album store (chỉ cần danh sách albums để render dropdown) ──
+  const albums = useAlbumStore((s) => s.albums);
+
+  // ── Media store (actions) ──
+  const restoreMedia = useMediaStore((s) => s.restoreMedia);
+  const permanentlyDeleteMedia = useMediaStore((s) => s.permanentlyDeleteMedia);
+  const moveMediaToAlbum = useMediaStore((s) => s.moveMediaToAlbum);
 
   const isTrash = currentAlbumId === ALBUM_TRASH_ID;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const isAllSelected = items.length > 0 && selectedIds.length === items.length;
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds(isAllSelected ? [] : items.map((item) => item.id));
+    setSelectedIds(isAllSelected ? [] : items.map((i) => i.id));
   }, [isAllSelected, items]);
 
   const handleSelect = useCallback(
@@ -63,11 +67,8 @@ export function ImageGrid({
     [],
   );
 
-  // --- Actions ---
-
   const handleMoveToAlbum = async (targetAlbumId: string) => {
-    const promise = moveMediaToAlbum(selectedIds, targetAlbumId);
-    toast.promise(promise, {
+    toast.promise(moveMediaToAlbum(selectedIds, targetAlbumId), {
       loading: "Moving assets...",
       success: "Moved successfully!",
       error: "Failed to move assets",
@@ -76,8 +77,7 @@ export function ImageGrid({
   };
 
   const handleRestore = async () => {
-    const promise = restoreMedia(selectedIds);
-    toast.promise(promise, {
+    toast.promise(restoreMedia(selectedIds), {
       loading: "Restoring...",
       success: "Restored successfully!",
       error: "Failed to restore",
@@ -86,15 +86,13 @@ export function ImageGrid({
   };
 
   const handlePermanentDelete = async () => {
-    if (confirm(`Delete ${selectedIds.length} items permanently?`)) {
-      const promise = permanentlyDeleteMedia(selectedIds);
-      toast.promise(promise, {
-        loading: "Deleting...",
-        success: "Deleted permanently!",
-        error: "Deletion failed",
-      });
-      setSelectedIds([]);
-    }
+    if (!confirm(`Delete ${selectedIds.length} items permanently?`)) return;
+    toast.promise(permanentlyDeleteMedia(selectedIds), {
+      loading: "Deleting...",
+      success: "Deleted permanently!",
+      error: "Deletion failed",
+    });
+    setSelectedIds([]);
   };
 
   const activeMedia = useMemo(
@@ -111,7 +109,6 @@ export function ImageGrid({
           </h2>
 
           <div className="flex items-center gap-2">
-            {/* Toolbar thông minh */}
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 animate-in fade-in zoom-in duration-200">
                 <button
@@ -169,8 +166,10 @@ export function ImageGrid({
             )}
 
             <p className="text-xs font-mono text-slate-500 ml-2">
-              {items.length} assets{" "}
-              {selectedIds.length > 0 ? `· ${selectedIds.length} selected` : ""}
+              {items.length} assets
+              {selectedIds.length > 0
+                ? ` · ${selectedIds.length} selected`
+                : ""}
             </p>
           </div>
         </header>

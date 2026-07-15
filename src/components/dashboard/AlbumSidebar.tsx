@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  ChangeEvent,
-  DragEvent,
-  FormEvent,
-  KeyboardEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { DragEvent, FormEvent, useCallback, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -18,10 +10,10 @@ import {
   Images,
   Pencil,
   Trash2,
-  Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAlbumStore } from "@/store/useAlbumStore";
+import { useMediaStore } from "@/store/useMediaStore";
 import { useDragStore } from "@/store/useDragStore";
 import { ALBUM_ALL_ID, ALBUM_TRASH_ID, MediaItem } from "@/types/image.types";
 import { readDragPayload } from "@/utils/dragMedia";
@@ -40,24 +32,26 @@ export function AlbumSidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState("");
-  const [isCreating, setIsCreating] = useState(false); // Trạng thái loading khi tạo
+  const [isCreating, setIsCreating] = useState(false);
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
-  const albums = useAlbumStore((state) => state.albums);
-  const activeAlbumId = useAlbumStore((state) => state.activeAlbumId);
-  const setActiveAlbum = useAlbumStore((state) => state.setActiveAlbum);
-  const createAlbum = useAlbumStore((state) => state.createAlbum);
-  const renameAlbum = useAlbumStore((state) => state.renameAlbum);
-  const deleteAlbum = useAlbumStore((state) => state.deleteAlbum);
-  const moveMediaToAlbum = useAlbumStore((state) => state.moveMediaToAlbum);
-  const getMediaCountByAlbum = useAlbumStore(
-    (state) => state.getMediaCountByAlbum,
-  );
+  // ── Album store ──
+  const albums = useAlbumStore((s) => s.albums);
+  const activeAlbumId = useAlbumStore((s) => s.activeAlbumId);
+  const setActiveAlbum = useAlbumStore((s) => s.setActiveAlbum);
+  const createAlbum = useAlbumStore((s) => s.createAlbum);
+  const renameAlbum = useAlbumStore((s) => s.renameAlbum);
+  const deleteAlbum = useAlbumStore((s) => s.deleteAlbum);
 
-  const dropTargetAlbumId = useDragStore((state) => state.dropTargetAlbumId);
-  const setDropTarget = useDragStore((state) => state.setDropTarget);
-  const endDrag = useDragStore((state) => state.endDrag);
+  // ── Media store ──
+  const moveMediaToAlbum = useMediaStore((s) => s.moveMediaToAlbum);
+  const getMediaCountByAlbum = useMediaStore((s) => s.getMediaCountByAlbum);
+
+  // ── Drag store ──
+  const dropTargetAlbumId = useDragStore((s) => s.dropTargetAlbumId);
+  const setDropTarget = useDragStore((s) => s.setDropTarget);
+  const endDrag = useDragStore((s) => s.endDrag);
 
   const userAlbums = useMemo(
     () => albums.filter((a) => a.id !== ALBUM_TRASH_ID),
@@ -81,10 +75,9 @@ export function AlbumSidebar({
     [onAlbumSelect, setActiveAlbum],
   );
 
-  const handleCreateAlbum = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCreateAlbum = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!newAlbumName.trim() || isCreating) return;
-
     setIsCreating(true);
     try {
       const createdId = await createAlbum(newAlbumName);
@@ -92,8 +85,8 @@ export function AlbumSidebar({
         setNewAlbumName("");
         handleSelectAlbum(createdId);
       }
-    } catch (error) {
-      console.error("❌ Lỗi khi tạo album:", error);
+    } catch (err) {
+      console.error("❌ Lỗi khi tạo album:", err);
     } finally {
       setIsCreating(false);
     }
@@ -107,19 +100,14 @@ export function AlbumSidebar({
   };
 
   const handleDeleteAlbum = async (albumId: string) => {
-    const count = getMediaCountByAlbum(albumId, allMedia);
-    if (count > 0) return;
+    if (getMediaCountByAlbum(albumId, allMedia) > 0) return;
     await deleteAlbum(albumId);
   };
 
-  const onAlbumDrop = (
-    event: DragEvent<HTMLButtonElement>,
-    albumId: string,
-  ) => {
-    event.preventDefault();
-    const payload = readDragPayload(event.dataTransfer);
-
-    if (payload && payload.mediaIds.length > 0) {
+  const onAlbumDrop = (e: DragEvent<HTMLButtonElement>, albumId: string) => {
+    e.preventDefault();
+    const payload = readDragPayload(e.dataTransfer);
+    if (payload?.mediaIds?.length > 0) {
       moveMediaToAlbum(payload.mediaIds, albumId);
       if (albumId !== ALBUM_TRASH_ID) handleSelectAlbum(albumId);
     }
@@ -224,14 +212,13 @@ export function AlbumSidebar({
         )}
       </div>
 
-      {trashAlbum
-        ? renderAlbumRow(
-            trashAlbum.id,
-            trashAlbum.name,
-            getMediaCountByAlbum(trashAlbum.id, allMedia),
-            true,
-          )
-        : null}
+      {trashAlbum &&
+        renderAlbumRow(
+          trashAlbum.id,
+          trashAlbum.name,
+          getMediaCountByAlbum(trashAlbum.id, allMedia),
+          true,
+        )}
 
       <form
         onSubmit={handleCreateAlbum}
@@ -241,21 +228,21 @@ export function AlbumSidebar({
           htmlFor="new-album"
           className="flex items-center gap-1.5 text-xs font-medium text-slate-400"
         >
-          <FolderPlus size={14} />
-          New Collection
+          <FolderPlus size={14} /> New Collection
         </label>
         <input
           id="new-album"
           value={newAlbumName}
-          onChange={(event) => setNewAlbumName(event.target.value)}
+          onChange={(e) => setNewAlbumName(e.target.value)}
           placeholder="Collection title..."
           className="h-10 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition"
         />
         <button
           type="submit"
-          className="h-10 w-full rounded-xl bg-blue-600 text-sm font-medium text-white shadow-lg shadow-blue-600/10 transition hover:bg-blue-500 active:scale-[0.98]"
+          disabled={isCreating || !newAlbumName.trim()}
+          className="h-10 w-full rounded-xl bg-blue-600 text-sm font-medium text-white shadow-lg shadow-blue-600/10 transition hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50"
         >
-          Create
+          {isCreating ? "Creating…" : "Create"}
         </button>
       </form>
 
@@ -271,28 +258,25 @@ export function AlbumSidebar({
 
   return (
     <>
+      {/* Mobile */}
       <div className="w-full md:hidden">
         <button
           type="button"
           aria-expanded={isMobileOpen}
-          aria-controls="mobile-album-panel"
-          onClick={() => setIsMobileOpen((prev) => !prev)}
+          onClick={() => setIsMobileOpen((p) => !p)}
           className="flex h-11 w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 text-sm font-semibold text-slate-100"
         >
           <span>Albums</span>
           {isMobileOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
-
-        {isMobileOpen ? (
-          <div
-            id="mobile-album-panel"
-            className="mt-2 rounded-xl border border-slate-800 bg-slate-900/50"
-          >
+        {isMobileOpen && (
+          <div className="mt-2 rounded-xl border border-slate-800 bg-slate-900/50">
             {panelContent}
           </div>
-        ) : null}
+        )}
       </div>
 
+      {/* Desktop */}
       <aside
         className={clsx(
           "sticky top-4 hidden h-[calc(100vh-2rem)] shrink-0 rounded-2xl border border-slate-800/60 bg-slate-900/30 backdrop-blur-xl transition-[width] duration-300 md:block",
@@ -301,15 +285,15 @@ export function AlbumSidebar({
         aria-label="Album sidebar"
       >
         <div className="flex items-center justify-between border-b border-slate-800/40 p-3.5">
-          {!isCollapsed ? (
+          {!isCollapsed && (
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Library
             </h2>
-          ) : null}
+          )}
           <button
             type="button"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setIsCollapsed((prev) => !prev)}
+            onClick={() => setIsCollapsed((p) => !p)}
             className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition"
           >
             {isCollapsed ? (
@@ -319,12 +303,11 @@ export function AlbumSidebar({
             )}
           </button>
         </div>
-
-        {!isCollapsed ? (
+        {!isCollapsed && (
           <div className="h-[calc(100%-3.5rem)] overflow-y-auto">
             {panelContent}
           </div>
-        ) : null}
+        )}
       </aside>
     </>
   );
