@@ -107,7 +107,7 @@ export function AlbumSidebar({
   const onAlbumDrop = (e: DragEvent<HTMLButtonElement>, albumId: string) => {
     e.preventDefault();
     const payload = readDragPayload(e.dataTransfer);
-    if (payload?.mediaIds?.length > 0) {
+    if (payload && payload.mediaIds && payload.mediaIds.length > 0) {
       moveMediaToAlbum(payload.mediaIds, albumId);
       if (albumId !== ALBUM_TRASH_ID) handleSelectAlbum(albumId);
     }
